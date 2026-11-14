@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sabbir Earning</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080e1c;color:#fff;font-family:Arial,sans-serif;padding-bottom:75px}
+header{padding:20px;background:#101b32;text-align:center}
+header h2{margin:0;color:#38d9ff}
+.card{background:#14213b;border:1px solid #243858;border-radius:15px;padding:17px;margin:13px}
+.balance{font-size:30px;color:#38d9ff;font-weight:bold}
+button{background:#087cf0;color:white;border:0;border-radius:10px;padding:12px 16px;margin:5px;cursor:pointer}
+input,select{width:100%;padding:13px;margin:7px 0;background:#0b1428;color:white;border:1px solid #344966;border-radius:9px}
+nav{position:fixed;bottom:0;left:0;right:0;background:#101b32;display:flex;justify-content:space-around;padding:10px 2px}
+nav button{font-size:11px;padding:10px 5px;margin:0}
+.page{display:none}.page.active{display:block}
+.small{color:#aabbd2;font-size:13px}
+</style>
+
+<!-- MONETAG SDK START -->
+<script src="https://libtl.com/sdk.js" data-zone="12206288" data-sdk="show_12206288"></script>
+<!-- MONETAG SDK END -->
+
+</head>
+<body>
+<header>
+<h2>Sabbir Earning</h2>
+<p id="welcome">স্বাগতম</p>
+</header>
+
+<section id="home" class="page active">
+<div class="card">
+<p>আমার ব্যালেন্স</p>
+<div class="balance" id="coins">0 Coins</div>
+<p class="small">1000 Coins = ৳1</p>
+</div>
+<div class="card">
+<h3>আজকের কাজ</h3>
+<p>বিজ্ঞাপন নেটওয়ার্ক সংযুক্ত হলে এখানে যাচাইকৃত বিজ্ঞাপন দেখা যাবে।</p>
+<button onclick="showPage('earn')">বিজ্ঞাপন দেখে আয় করুন</button>
+</div>
+<div class="card">
+<h3>Leaderboard — Top 10</h3>
+<div id="leaderboard">তথ্য লোড হচ্ছে...</div>
+</div>
+</section>
+
+<section id="earn" class="page">
+<div class="card">
+<h3>Earn Coins</h3>
+<p>প্রতি যাচাইকৃত বিজ্ঞাপনে ৫০ Coins।</p>
+<p>Monetag Reward বিজ্ঞাপন প্রস্তুত।</p>
+<button type="button" onclick="watchAd()">বিজ্ঞাপন দেখুন</button>
+<p id="adMsg" class="small"></p>
+<p class="small">ভুয়া বিজ্ঞাপন বা অসম্পূর্ণ বিজ্ঞাপনে Coin দেওয়া হবে না।</p>
+</div>
+</section>
+
+
+<section id="dailyStats" class="page">
+<div class="card">
+<h3>📊 Daily Ads Statistics</h3>
+<p>আজকের বিজ্ঞাপন দেখা হয়েছে</p>
+<div class="balance" id="todayAdsCount">0 Ads</div>
+<p>আজকের অর্জিত Reward</p>
+<div class="balance" id="todayRewardCoins">0 Coins</div>
+<p class="small">প্রতি যাচাইকৃত বিজ্ঞাপনে ৫০ Coins</p>
+<button onclick="loadDailyStats()">হিসাব আপডেট করুন</button>
+</div>
+<div class="card">
+<h3>📅 গত ৭ দিনের বিজ্ঞাপনের হিসাব</h3>
+<div id="dailyHistory">তথ্য লোড হচ্ছে...</div>
+</div>
+</section>
+
+<section id="wallet" class="page">
+<div class="card">
+<h3>My Wallet</h3>
+<div class="balance" id="walletCoins">0 Coins</div>
+<p id="walletBDT">৳0</p>
+</div>
+</section>
+
+<section id="withdraw" class="page">
+<div class="card">
+<h3>Withdraw</h3>
+<p>সর্বনিম্ন উত্তোলন ৳1000 (1,000,000 Coins)</p>
+<input id="amount" type="number" placeholder="টাকার পরিমাণ">
+<select id="method">
+<option value="bkash">bKash</option>
+<option value="nagad">Nagad</option>
+</select>
+<input id="phone" type="tel" placeholder="বিকাশ/নগদ নম্বর">
+<button onclick="withdraw()">উত্তোলনের আবেদন</button>
+<p id="withdrawMsg"></p>
+</div>
+</section>
+
+<section id="history" class="page">
+<div class="card"><h3>Transaction History</h3><div id="historyList">কোনো তথ্য নেই</div></div>
+</section>
+
+<section id="profile" class="page">
+<div class="card">
+<h3>My Profile</h3>
+<p>নাম: <span id="name">লোড হচ্ছে...</span></p>
+<p>Telegram ID: <span id="uid">-</span></p>
+<p>Username: <span id="username">-</span></p>
+</div>
+<div class="card">
+<h3>Language</h3>
+<button onclick="setLang('bn')">বাংলা</button>
+<button onclick="setLang('en')">English</button>
+</div>
+</section>
+
+<nav>
+<button onclick="showPage('home')">Home</button>
+<button onclick="showPage('earn')">Earn</button>
+<button onclick="showPage('dailyStats');loadDailyStats()">📊 Ads</button>
+<button onclick="showPage('wallet')">Wallet</button>
+<button onclick="showPage('withdraw')">Withdraw</button>
+<button onclick="showPage('history')">History</button>
+<button onclick="showPage('profile')">Profile</button>
+</nav>
+
+<script>
+const tg=window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand()}
+let user=null;
+window.addEventListener('DOMContentLoaded',()=>{try{setLang(localStorage.getItem('app_language')||'bn')}catch(e){setLang('bn')}});
+function showPage(id){
+document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+}
+const translations = {
+'স্বাগতম':'Welcome',
+'আমার ব্যালেন্স':'My Balance',
+'আজকের কাজ':'Today’s Tasks',
+'বিজ্ঞাপন নেটওয়ার্ক সংযুক্ত হলে এখানে যাচাইকৃত বিজ্ঞাপন দেখা যাবে।':'Verified ads will appear here when an ad network is connected.',
+'তথ্য লোড হচ্ছে...':'Loading data...',
+'প্রতিটি যাচাইকৃত বিজ্ঞাপনে ৫০ Coins':'50 Coins for each verified ad',
+'AdsGram বিজ্ঞাপন দেখুন এবং যাচাইকৃত বিজ্ঞাপনে ৫০ Coins পান।':'Ad network is not connected yet.',
+'ভুয়া বিজ্ঞাপন বা অসমপূর্ণ বিজ্ঞাপন দেখলে Coin দেওয়া হবে না।':'No coins are given for fake or incomplete ads.',
+'টাকার পরিমাণ':'Amount in BDT',
+'বিকাশ/নগদ নম্বর':'bKash/Nagad number',
+'উত্তোলনের আবেদন':'Request Withdrawal',
+'কোনো তথ্য নেই':'No information available',
+'নাম:':'Name:',
+'লোড হচ্ছে...':'Loading...',
+'ভাষা':'Language',
+'আমার ওয়ালেট':'My Wallet',
+'বাংলা':'Bangla',
+'English':'English',
+'Home':'হোম',
+'Earn':'আয়',
+'Wallet':'ওয়ালেট',
+'Withdraw':'উত্তোলন',
+'History':'ইতিহাস',
+'Profile':'প্রোফাইল',
+'Earn Now':'এখন আয় করুন',
+'Earn Coins':'কয়েন আয়',
+'My Wallet':'আমার ওয়ালেট',
+'My Profile':'আমার প্রোফাইল',
+'Leaderboard – Top 10':'সেরা ১০ জন',
+'Transaction History':'লেনদেনের ইতিহাস',
+'Withdraw':'উত্তোলন',
+'Language':'ভাষা',
+'bKash':'বিকাশ',
+'Nagad':'নগদ'
+};
+
+function setLang(lang) {
+  if (lang !== 'bn' && lang !== 'en') return;
+  document.documentElement.lang = lang;
+  const dict = lang === 'en' ? translations :
+    Object.fromEntries(Object.entries(translations).map(([a,b]) => [b,a]));
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let node;
+  while (node = walker.nextNode()) {
+    const old = node.nodeValue;
+    const trimmed = old.trim();
+    if (dict[trimmed]) {
+      node.nodeValue = old.replace(trimmed, dict[trimmed]);
+    }
+  }
+  document.querySelectorAll('input[placeholder]').forEach(el => {
+    const value = el.getAttribute('placeholder');
+    if (dict[value]) el.setAttribute('placeholder', dict[value]);
+  });
+  document.title = lang === 'en' ? 'Sabbir Earning' : 'সাব্বির আর্নিং';
+  try { localStorage.setItem('app_language', lang); } catch(e) {}
+}
+async function api(url,options={}){
+const headers={'Content-Type':'application/json',...(options.headers||{})};
+if(tg?.initData)headers['X-Telegram-Init-Data']=tg.initData;
+return fetch(url,{...options,headers});
+}
+async function loadUser(){
+if(!tg?.initData){
+document.getElementById('welcome').textContent='Telegram Mini App-এর ভেতর থেকে খুলুন';
+return;
+}
+try{
+const r=await api('/api/user');
+const d=await r.json();
+if(!r.ok)throw new Error(d.message||'Authentication failed');
+user=d.user;
+document.getElementById('welcome').textContent='স্বাগতম, '+(user.first_name||'ব্যবহারকারী');
+document.getElementById('name').textContent=user.first_name||'-';
+document.getElementById('uid').textContent=user.user_id;
+document.getElementById('username').textContent=user.username||'-';
+document.getElementById('coins').textContent=user.coins+' Coins';
+document.getElementById('walletCoins').textContent=user.coins+' Coins';
+document.getElementById('walletBDT').textContent='৳'+(Number(user.coins)/1000);
+loadLeaderboard();
+}catch(e){
+document.getElementById('welcome').textContent=e.message;
+}
+}
+
+async function watchAd(){
+    const msg = document.getElementById('adMsg');
+
+    if (!tg?.initData) {
+        msg.textContent = 'Telegram Mini App-এর ভেতর থেকে খুলুন।';
+        return;
+    }
+
+    if (typeof window.show_12206288 !== 'function') {
+        msg.textContent = 'Monetag SDK লোড হয়নি। পেজ Reload করে আবার চেষ্টা করুন।';
+        return;
+    }
+
+    try {
+        msg.textContent = 'Monetag বিজ্ঞাপন প্রস্তুত হচ্ছে...';
+
+        const sessionResponse = await api('/api/monetag-session', {
+            method: 'POST'
+        });
+        const session = await sessionResponse.json();
+
+        if (!sessionResponse.ok || !session.ok || !session.ymid) {
+            throw new Error(session.message || 'বিজ্ঞাপন Session তৈরি হয়নি');
+        }
+
+        msg.textContent = 'Monetag বিজ্ঞাপন লোড হচ্ছে...';
+
+        await window.show_12206288({
+            type: 'end',
+            ymid: session.ymid,
+            requestVar: 'earn_button'
+        });
+
+        msg.textContent = 'বিজ্ঞাপন শেষ। সার্ভারের Reward যাচাই হচ্ছে...';
+
+        for (let i = 0; i < 25; i++) {
+            await new Promise(resolve => setTimeout(resolve, 1200));
+
+            const statusResponse = await api(
+                '/api/monetag-status?ymid=' + encodeURIComponent(session.ymid)
+            );
+            const status = await statusResponse.json();
+
+            if (statusResponse.ok && status.rewarded) {
+                msg.textContent = 'অভিনন্দন! ৫০ Coins যোগ হয়েছে।';
+                await loadUser();
+                return;
+            }
+        }
+
+        msg.textContent = 'বিজ্ঞাপন দেখা হয়েছে, কিন্তু Monetag-এর সার্ভার Reward এখনো নিশ্চিত করেনি। পরে ব্যালেন্স দেখুন।';
+
+    } catch (e) {
+        msg.textContent = 'বিজ্ঞাপন দেখানো যায়নি: ' + (e.message || 'আবার চেষ্টা করুন');
+    }
+}
+
+async function loadLeaderboard(){
+try{
+const r=await api('/api/leaderboard');
+const d=await r.json();
+if(!r.ok)throw new Error();
+document.getElementById('leaderboard').textContent='Leaderboard তথ্য পাওয়া যায়নি';
+}catch(e){
+document.getElementById('leaderboard').textContent='Leaderboard এখনো প্রস্তুত নয়';
+}
+}
+
+async function loadDailyStats(){
+    const ads = document.getElementById('todayAdsCount');
+    const coins = document.getElementById('todayRewardCoins');
+    const history = document.getElementById('dailyHistory');
+
+    ads.textContent = 'লোড হচ্ছে...';
+    coins.textContent = 'লোড হচ্ছে...';
+
+    try {
+        const r = await api('/api/daily-ads-statistics');
+        const d = await r.json();
+        if (!r.ok || !d.ok) throw new Error();
+
+        ads.textContent = Number(d.today_ads) + ' Ads';
+        coins.textContent = Number(d.today_coins).toLocaleString() + ' Coins';
+
+        history.innerHTML = d.days.length
+            ? d.days.map(x => '<p>📅 ' + x.day + ' — ' +
+                x.ads + ' Ads — ' +
+                Number(x.coins).toLocaleString() + ' Coins</p>').join('')
+            : 'এখনো কোনো যাচাইকৃত বিজ্ঞাপন দেখা হয়নি।';
+    } catch(e) {
+        ads.textContent = 'তথ্য পাওয়া যায়নি';
+        coins.textContent = 'তথ্য পাওয়া যায়নি';
+        history.textContent = 'পুনরায় চেষ্টা করুন।';
+    }
+}
+
+async function withdraw(){
+const amount=Number(document.getElementById('amount').value);
+const phone=document.getElementById('phone').value.trim();
+const method=document.getElementById('method').value;
+const msg=document.getElementById('withdrawMsg');
+if(!amount||amount<1000||!phone){msg.textContent='সঠিক পরিমাণ ও মোবাইল নম্বর দিন';return}
+try{
+const r=await api('/api/withdraw',{method:'POST',body:JSON.stringify({amount,phone,method})});
+const d=await r.json();
+msg.textContent=d.message||'আবেদন সম্পন্ন হয়নি';
+if(r.ok)loadUser();
+}catch(e){msg.textContent='আবেদন পাঠানো যায়নি'}
+}
+loadUser();
+</script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sabbir Earning Admin</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:#080e1c;color:white;font-family:Arial}
+.card{background:#14213b;border:1px solid #29415f;border-radius:14px;padding:16px;margin:12px 0}
+h2{color:#38d9ff}
+input,select{width:100%;padding:12px;margin:7px 0;background:#0b1428;color:white;border:1px solid #344966;border-radius:8px}
+button{background:#087cf0;color:white;border:0;border-radius:8px;padding:10px 13px;margin:4px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+td,th{padding:9px;border-bottom:1px solid #344966;text-align:left}
+.hidden{display:none}
+.small{color:#b9cce0;font-size:12px}
+</style>
+</head>
+<body>
+<h2>Sabbir Earning Admin Panel</h2>
+
+<div class="card" id="loginBox">
+<h3>Admin Login</h3>
+<input id="password" type="password" placeholder="Admin Password">
+<button onclick="login()">Login</button>
+<p id="loginMsg"></p>
+</div>
+
+<div id="dashboard" class="hidden">
+<div class="card">
+<h3>Dashboard</h3>
+<p>মোট ব্যবহারকারী: <b id="users">0</b></p>
+<p>মোট উত্তোলনের আবেদন: <b id="requests">0</b></p>
+<p>Pending: <b id="pending">0</b></p>
+<p>মোট Paid: ৳<b id="paid">0</b></p>
+<button onclick="refresh()">Refresh</button>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div class="card">
+<h3>Withdrawal Requests</h3>
+<p class="small">Reject করলে কারণ লিখতে হবে। Normal Reject-এ কয়েন ফেরত যাবে। Fraud Reject-এ ফেরত যাবে না।</p>
+<div style="overflow-x:auto"><table>
+<thead><tr><th>ID</th><th>User</th><th>Amount</th><th>Method</th><th>Number</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="withdrawals"></tbody>
+</table></div>
+</div>
+
+<div class="card">
+<h3>Users</h3>
+<div style="overflow-x:auto"><table>
+<thead><tr><th>User ID</th><th>Name</th><th>Coins</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="userList"></tbody>
+</table></div>
+</div>
+
+<div class="card">
+<h3>Balance Adjustment</h3>
+<input id="balanceUser" type="number" placeholder="Telegram User ID">
+<input id="balanceCoins" type="number" placeholder="কয়েন (+ যোগ / - বিয়োগ)">
+<button onclick="adjustBalance()">Update Balance</button>
+</div>
+</div>
+
+<script>
+let csrfToken = "";
+
+async function api(url, options={}) {
+ const headers = {
+  "Content-Type":"application/json",
+  ...(options.headers || {})
+ };
+ if (csrfToken) headers["X-Admin-CSRF"] = csrfToken;
+ const r = await fetch(url, {
+  ...options, headers, credentials:"same-origin"
+ });
+ const d = await r.json();
+ if (!r.ok) throw new Error(d.message || "Request failed");
+ return d;
+}
+
+async function login() {
+ const msg = document.getElementById("loginMsg");
+ try {
+  const d = await api("/admin/login", {
+   method:"POST",
+   body:JSON.stringify({
+    password:document.getElementById("password").value
+   })
+  });
+  csrfToken = d.csrf_token || "";
+  if (!csrfToken) throw new Error("CSRF token পাওয়া যায়নি");
+  document.getElementById("loginBox").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  await refresh();
+ } catch(e) { msg.textContent = "Login ব্যর্থ: " + e.message; }
+}
+
+async function refresh() {
+ try {
+  const [s,w,u] = await Promise.all([
+   api("/api/admin/stats"),
+   api("/api/admin/withdrawals"),
+   api("/api/admin/users")
+  ]);
+
+  document.getElementById("users").textContent = s.total_users ?? 0;
+  document.getElementById("requests").textContent = (w.withdrawals || []).length;
+  document.getElementById("pending").textContent = s.pending_withdrawals ?? 0;
+  document.getElementById("paid").textContent = s.total_paid_bdt ?? 0;
+
+  const wb = document.getElementById("withdrawals");
+  wb.replaceChildren();
+
+  (w.withdrawals || []).forEach(x => {
+   const tr = document.createElement("tr");
+   [x.id,x.user_id,x.amount_bdt,x.method,x.phone,x.status].forEach(v => {
+    const td = document.createElement("td");
+    td.textContent = v ?? "-";
+    tr.appendChild(td);
+   });
+
+   const td = document.createElement("td");
+   if (x.status === "pending") {
+    [["Paid","paid"],["Normal Reject","normal_rejected"],["Fraud Reject","fraud_rejected"]].forEach(([label,act]) => {
+     const b = document.createElement("button");
+     b.textContent = label;
+     b.onclick = () => withdrawalAction(x.id,act);
+     td.appendChild(b);
+    });
+   } else {
+    td.textContent = x.reason || "-";
+   }
+   tr.appendChild(td);
+   wb.appendChild(tr);
+  });
+
+  const ub = document.getElementById("userList");
+  ub.replaceChildren();
+
+  (u.users || []).forEach(x => {
+   const tr = document.createElement("tr");
+   [x.user_id,x.first_name,x.coins,x.banned ? "BANNED" : "ACTIVE"].forEach(v => {
+    const td = document.createElement("td");
+    td.textContent = v ?? "-";
+    tr.appendChild(td);
+   });
+   const td = document.createElement("td");
+   const b = document.createElement("button");
+   b.textContent = x.banned ? "Unban" : "Ban";
+   b.onclick = () => banUser(x.user_id, x.banned ? 0 : 1);
+   td.appendChild(b);
+   tr.appendChild(td);
+   ub.appendChild(tr);
+  });
+ } catch(e) {
+  alert("ডেটা লোড হয়নি: " + e.message);
+ }
+}
+
+async function withdrawalAction(id, action) {
+ let reason = "";
+ if (action !== "paid") {
+  reason = prompt("Reject করার কারণ লিখুন:");
+  if (!reason || !reason.trim()) return;
+ }
+ if (!confirm("নিশ্চিত করবেন?")) return;
+
+ try {
+  await api("/api/admin/action", {
+   method:"POST",
+   body:JSON.stringify({
+    withdrawal_id:id,
+    action:action,
+    reason:reason
+   })
+  });
+  alert("কাজ সম্পন্ন হয়েছে");
+  await refresh();
+ } catch(e) { alert(e.message); }
+}
+
+async function banUser(id, banned) {
+ if (!confirm("নিশ্চিত করবেন?")) return;
+ try {
+  await api("/api/admin/ban", {
+   method:"POST",
+   body:JSON.stringify({user_id:id,banned:banned})
+  });
+  await refresh();
+ } catch(e) { alert(e.message); }
+}
+
+async function adjustBalance() {
+ const user_id = Number(document.getElementById("balanceUser").value);
+ const coins = Number(document.getElementById("balanceCoins").value);
+ if (!user_id || !coins) return alert("User ID ও কয়েন লিখুন");
+ if (!confirm("ব্যালেন্স পরিবর্তন করবেন?")) return;
+ try {
+  await api("/api/admin/balance", {
+   method:"POST",
+   body:JSON.stringify({user_id,coins})
+  });
+  alert("ব্যালেন্স আপডেট হয়েছে");
+  await refresh();
+ } catch(e) { alert(e.message); }
+}
+
+async function logout() {
+ try { await api("/admin/logout",{method:"POST"}); } catch(e) {}
+ location.reload();
+}
+</script>
+</body>
+</html>
